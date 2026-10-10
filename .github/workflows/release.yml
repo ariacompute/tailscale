@@ -223,4 +223,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: release-assets/*
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.ARIACOMPUTE_TOKEN }}
