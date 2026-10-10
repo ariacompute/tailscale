@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export CGO_ENABLED = 0
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	mkdir -p build
+	go build -trimpath -buildvcs=false -ldflags "-s -w" -o build/aria-tailscale ./cmd/aria-tailscale
+
+override_dh_auto_test:
+	go test ./...
+
+override_dh_auto_clean:
+	rm -rf build

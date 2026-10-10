@@ -1,0 +1,31 @@
+#!/bin/sh
+set -eu
+
+: "${ARIA_TAILSCALE_HOME:=/var/lib/aria-tailscale}"
+export HOME="${HOME:-$ARIA_TAILSCALE_HOME}"
+
+: "${ARIA_TAILSCALE_LISTEN:=:8787}"
+: "${ARIA_TAILSCALE_TAILSCALE:=funnel}"
+: "${ARIA_TAILSCALE_HOSTNAME:=ariacompute-funnel}"
+: "${ARIA_TAILSCALE_STATE_DIR:=${ARIA_TAILSCALE_HOME}/tsnet}"
+
+mkdir -p "$ARIA_TAILSCALE_HOME" "$ARIA_TAILSCALE_STATE_DIR"
+
+ARGS=""
+ARGS="$ARGS --listen $ARIA_TAILSCALE_LISTEN"
+ARGS="$ARGS --tailscale $ARIA_TAILSCALE_TAILSCALE"
+ARGS="$ARGS --hostname $ARIA_TAILSCALE_HOSTNAME"
+ARGS="$ARGS --state-dir $ARIA_TAILSCALE_STATE_DIR"
+
+if [ -n "${ARIA_TAILSCALE_CONFIG:-}" ]; then
+  ARGS="$ARGS --config $ARIA_TAILSCALE_CONFIG"
+fi
+
+# Parse space-separated routes into repeated --route flags.
+if [ -n "${ARIA_TAILSCALE_ROUTES:-}" ]; then
+  for r in $ARIA_TAILSCALE_ROUTES; do
+    ARGS="$ARGS --route $r"
+  done
+fi
+
+exec /usr/bin/aria-tailscale run $ARGS

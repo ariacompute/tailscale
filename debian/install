@@ -1,0 +1,4 @@
+build/aria-tailscale usr/bin/
+debian/aria-tailscale-service usr/lib/aria-tailscale/
+debian/aria-tailscale.default etc/default/
+etc/aria-tailscale.yaml.example usr/share/aria-tailscale/aria-tailscale.yaml.example

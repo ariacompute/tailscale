@@ -1,0 +1,22 @@
+[Unit]
+Description=Tailscale Funnel reverse proxy for ariacompute
+Documentation=https://ariacompute.com
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=HOME=/var/lib/aria-tailscale
+EnvironmentFile=-/etc/default/aria-tailscale
+WorkingDirectory=/var/lib/aria-tailscale
+StateDirectory=aria-tailscale
+ExecStart=/usr/lib/aria-tailscale/aria-tailscale-service
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/aria-tailscale
+
+[Install]
+WantedBy=multi-user.target

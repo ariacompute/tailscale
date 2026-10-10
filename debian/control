@@ -1,0 +1,16 @@
+Source: aria-tailscale
+Section: net
+Priority: optional
+Maintainer: jia <jia@ariacompute.com>
+Build-Depends: debhelper-compat (= 13), golang-any
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://ariacompute.com
+
+Package: aria-tailscale
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Tailscale Funnel reverse proxy for ariacompute services
+ Routes external HTTPS traffic (by Host header) to internal ariacompute
+ services through Tailscale Funnel. Transparent, Host-based reverse proxy
+ with YAML + CLI configuration and systemd integration.

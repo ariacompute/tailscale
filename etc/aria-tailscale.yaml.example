@@ -1,0 +1,15 @@
+# Example Tailscale Funnel config for ariacompute services.
+# Copy to /etc/aria-tailscale/aria-tailscale.yaml and edit, then set
+# ARIA_TAILSCALE_CONFIG in /etc/default/aria-tailscale (or pass --config).
+
+tailscale: funnel          # funnel | tailnet | "" (local only)
+listen: ":8787"
+hostname: ariacompute-funnel
+state_dir: /var/lib/aria-tailscale/tsnet
+# auth_key: tskey-auth-...  # prefer TS_AUTHKEY env or --auth-key
+
+routes:
+  - host: app.example.com
+    upstream: http://127.0.0.1:8080
+  - host: api.example.com
+    upstream: http://127.0.0.1:9090

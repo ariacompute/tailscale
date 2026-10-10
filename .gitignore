@@ -1,0 +1,6 @@
+tailscale-funnel
+.tailscale-funnel-state/
+build/
+dist/
+*.deb
+.codebuddy/

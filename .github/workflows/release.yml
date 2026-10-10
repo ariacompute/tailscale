@@ -1,0 +1,226 @@
+name: Release
+
+on:
+  release:
+    types:
+      - created
+
+permissions:
+  contents: write
+
+jobs:
+  metadata:
+    name: Prepare release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.versions.outputs.release_version }}
+      deb_version: ${{ steps.versions.outputs.deb_version }}
+    steps:
+      - name: Derive version strings from release tag
+        id: versions
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          release_version="${RELEASE_TAG#aria-tailscale/}"
+          release_version="${release_version#v}"
+
+          if [[ -z "$release_version" ]]; then
+            echo "failed to derive release version from tag: ${RELEASE_TAG}" >&2
+            exit 1
+          fi
+
+          deb_version="$release_version"
+          if [[ "$deb_version" == *-* ]]; then
+            deb_version="${deb_version/-/~}"
+          fi
+
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "deb_version=$deb_version" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test ./...
+
+  build-binaries:
+    name: Build ${{ matrix.label }}
+    needs:
+      - metadata
+      - test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux amd64
+            goos: linux
+            goarch: amd64
+            binary_name: aria-tailscale
+            archive_suffix: linux_amd64.tar.gz
+            artifact_suffix: linux-amd64
+            archive_type: tar.gz
+          - label: linux arm64
+            goos: linux
+            goarch: arm64
+            binary_name: aria-tailscale
+            archive_suffix: linux_arm64.tar.gz
+            artifact_suffix: linux-arm64
+            archive_type: tar.gz
+          - label: windows x64
+            goos: windows
+            goarch: amd64
+            binary_name: aria-tailscale.exe
+            archive_suffix: windows_x64.zip
+            artifact_suffix: windows-x64
+            archive_type: zip
+    env:
+      RELEASE_VERSION: ${{ needs.metadata.outputs.release_version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        shell: bash
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          mkdir -p dist
+          go build -trimpath -buildvcs=false -ldflags "-s -w" -o "dist/${{ matrix.binary_name }}" ./cmd/aria-tailscale
+
+      - name: Package tarball
+        if: matrix.archive_type == 'tar.gz'
+        shell: bash
+        run: tar -C dist -czf "dist/aria-tailscale_${RELEASE_VERSION}_${{ matrix.archive_suffix }}" "${{ matrix.binary_name }}"
+
+      - name: Package zip
+        if: matrix.archive_type == 'zip'
+        shell: bash
+        run: |
+          cd dist
+          zip "aria-tailscale_${RELEASE_VERSION}_${{ matrix.archive_suffix }}" "${{ matrix.binary_name }}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aria-tailscale-${{ env.RELEASE_VERSION }}-${{ matrix.artifact_suffix }}
+          path: dist/aria-tailscale_${{ env.RELEASE_VERSION }}_${{ matrix.archive_suffix }}
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS universal
+    needs:
+      - metadata
+      - test
+    runs-on: macos-latest
+    env:
+      RELEASE_VERSION: ${{ needs.metadata.outputs.release_version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build universal binary
+        shell: bash
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist/macos
+          GOOS=darwin GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "-s -w" -o dist/macos/aria-tailscale-amd64 ./cmd/aria-tailscale
+          GOOS=darwin GOARCH=arm64 go build -trimpath -buildvcs=false -ldflags "-s -w" -o dist/macos/aria-tailscale-arm64 ./cmd/aria-tailscale
+          lipo -create -output dist/aria-tailscale dist/macos/aria-tailscale-amd64 dist/macos/aria-tailscale-arm64
+          tar -C dist -czf "dist/aria-tailscale_${RELEASE_VERSION}_macos_universal.tar.gz" aria-tailscale
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aria-tailscale-${{ env.RELEASE_VERSION }}-macos-universal
+          path: dist/aria-tailscale_${{ env.RELEASE_VERSION }}_macos_universal.tar.gz
+          if-no-files-found: error
+
+  build-deb:
+    name: Build Debian package
+    needs:
+      - metadata
+      - test
+    runs-on: ubuntu-latest
+    env:
+      DEB_VERSION: ${{ needs.metadata.outputs.deb_version }}
+      RELEASE_VERSION: ${{ needs.metadata.outputs.release_version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential debhelper golang-any
+
+      - name: Set Debian package version from release tag
+        shell: bash
+        run: |
+          sed -E -i "1s/^aria-tailscale \([^)]+\)/aria-tailscale (${DEB_VERSION})/" debian/changelog
+
+      - name: Build Debian package
+        shell: bash
+        run: bash ./scripts/build-deb.sh
+
+      - name: Collect package artifacts
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp ../aria-tailscale_*.deb dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aria-tailscale-${{ env.RELEASE_VERSION }}-debian-package
+          path: dist/*.deb
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs:
+      - build-binaries
+      - build-macos
+      - build-deb
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          token: ${{ secrets.GITHUB_TOKEN }}
