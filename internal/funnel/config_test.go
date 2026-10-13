@@ -60,7 +60,7 @@ func TestDefaultConfig(t *testing.T) {
 func TestApplyConfig_OverridesOnlyNonEmpty(t *testing.T) {
 	dst := defaultConfig()
 	src := &Config{
-		Tailscale: "", // empty -> must NOT override
+		Tailscale: "", // absent/implicit empty -> must NOT override
 		Listen:    ":1234",
 		Hostname:  "src-host",
 		StateDir:  "",
@@ -70,7 +70,7 @@ func TestApplyConfig_OverridesOnlyNonEmpty(t *testing.T) {
 	applyConfig(&dst, src)
 
 	if dst.Tailscale != "funnel" {
-		t.Errorf("empty src.Tailscale should not override: got %q", dst.Tailscale)
+		t.Errorf("implicit empty src.Tailscale should not override: got %q", dst.Tailscale)
 	}
 	if dst.Listen != ":1234" {
 		t.Errorf("non-empty listen should override: got %q", dst.Listen)
@@ -83,6 +83,23 @@ func TestApplyConfig_OverridesOnlyNonEmpty(t *testing.T) {
 	}
 	if len(dst.Routes) != 1 {
 		t.Errorf("routes should be appended: got %d", len(dst.Routes))
+	}
+}
+
+func TestApplyConfig_ExplicitEmptyTailscaleIsLocal(t *testing.T) {
+	dst := defaultConfig()
+	src := &Config{
+		Tailscale:         "", // explicit empty -> local
+		tailscaleExplicit: true,
+		Listen:            ":1234",
+	}
+	applyConfig(&dst, src)
+
+	if dst.Tailscale != "" {
+		t.Errorf("explicit empty src.Tailscale should set local (empty): got %q", dst.Tailscale)
+	}
+	if dst.Listen != ":1234" {
+		t.Errorf("non-empty listen should override: got %q", dst.Listen)
 	}
 }
 

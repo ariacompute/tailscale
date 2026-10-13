@@ -24,6 +24,11 @@ type Config struct {
 	StateDir   string  `yaml:"state_dir"`
 	AuthKey    string  `yaml:"auth_key"`
 	Routes     []Route `yaml:"routes"`
+	// tailscaleExplicit records whether the YAML file set the tailscale key
+	// (even to an empty string). An explicit empty value means local mode;
+	// without this flag an empty value is indistinguishable from the key being
+	// absent and would fall back to the "funnel" default.
+	tailscaleExplicit bool
 }
 
 // defaultConfig returns the built-in defaults used before any YAML or CLI input.
@@ -45,6 +50,15 @@ func LoadConfig(path string) (*Config, error) {
 	var c Config
 	if err := yaml.Unmarshal(data, &c); err != nil {
 		return nil, err
+	}
+	// Detect whether the tailscale key was explicitly present in the file so an
+	// explicit empty value ("") can mean local mode instead of falling back to
+	// the "funnel" default.
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(data, &m); err == nil {
+		if _, ok := m["tailscale"]; ok {
+			c.tailscaleExplicit = true
+		}
 	}
 	c.ConfigFile = path
 	return &c, nil
@@ -71,10 +85,12 @@ func ParseRoute(s string) (Route, error) {
 	return r, nil
 }
 
-// applyConfig overlays non-empty scalar fields and appends routes from src onto
-// dst (dst wins only where src is non-empty).
+// applyConfig overlays scalar fields and appends routes from src onto dst.
+// An explicitly-set tailscale value (including empty, meaning local) wins; an
+// absent key leaves the default/fallback untouched. Other scalars only override
+// when non-empty.
 func applyConfig(dst *Config, src *Config) {
-	if strings.TrimSpace(src.Tailscale) != "" {
+	if src.tailscaleExplicit {
 		dst.Tailscale = src.Tailscale
 	}
 	if strings.TrimSpace(src.Listen) != "" {

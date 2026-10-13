@@ -138,6 +138,26 @@ routes:
 	}
 }
 
+func TestFlagsFromCmd_ConfigExplicitEmptyTailscaleIsLocal(t *testing.T) {
+	cfgPath := writeConfig(t, `
+tailscale: ""
+listen: ":8082"
+routes:
+  - host: app.example.com
+    upstream: http://127.0.0.1:8080
+`)
+	cmd := newTestCmd(t, map[string]string{
+		"config": cfgPath,
+	})
+	o, err := FlagsFromCmd(cmd)
+	if err != nil {
+		t.Fatalf("explicit empty tailscale in config must not require auth key: %v", err)
+	}
+	if o.Tailscale != "" {
+		t.Errorf("tailscale should be empty (local) from explicit config: got %q", o.Tailscale)
+	}
+}
+
 func TestRun_LocalMode_ServesAndShutsDown(t *testing.T) {
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, "upstream")
