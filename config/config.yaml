@@ -10,5 +10,5 @@ state_dir: /var/lib/aria-tailscale/tsnet
 # auth_key: tskey-auth-...  # prefer TS_AUTHKEY env or --auth-key
 
 routes:
-  - host: ariacompute-funnel.<tailnet>.ts.net
+  - host: ariacompute-funnel.saury-viper.ts.net
     upstream: http://127.0.0.1:8080
