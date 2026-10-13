@@ -28,7 +28,7 @@
 
 Tailscale 会自动为 Funnel 节点签发 TLS 证书。要使用自定义域名
 （`app.example.com`、`api.example.com`），需在 tailnet 管理后台把它们添加为
-**Funnel 自定义域名**，并将其 DNS 指向该 Funnel 节点。代码侧只需按 `Host` 头路由，
+**DNS → Custom domains**，并将其 DNS 指向该 Funnel 节点。代码侧只需按 `Host` 头路由，
 无需处理证书。
 
 ## 前置条件
@@ -42,7 +42,76 @@ tailscale listen: Funnel not available; HTTPS must be enabled. See https://tails
 ```
 
 开启后稍等几秒让节点拉取证书，再重启服务即可。（自定义域名还需在后台添加为
-Funnel 自定义域名。）
+DNS → Custom domains。）
+
+### 为节点开启 Funnel
+
+除了开启 HTTPS，节点本身还须被授予 `funnel` 节点属性，否则 `ListenFunnel` 会报错：
+
+```
+tailscale listen: Funnel not available; "funnel" node attribute not set. See https://tailscale.com/s/no-funnel.
+```
+
+可用以下两种方式之一授予：
+
+- **ACL 策略（推荐用于服务端）：** 在 **Access controls → Definitions → Node attributes** 中，把 `nodeAttrs` 作为
+  **顶层键**添加到已有的策略对象里（与 `acls` 同级，不要单独存成文件）。它把
+  `funnel` 属性授予节点——可以是某个具体 tag（例如 `tag:ariacompute`），也可以用
+  `["*"]` 对所有节点授予：
+
+  ```json
+  {
+    "acls": [
+      { "action": "accept", "src": ["*"], "dst": ["*:*"] }
+    ],
+    "nodeAttrs": [
+      { "target": ["tag:ariacompute"], "attr": ["funnel"] }
+    ]
+  }
+  ```
+
+  若要对**所有**节点授予 `funnel`，把 `target` 换成 `["*"]` 即可：
+
+  ```json
+  {
+    "acls": [
+      { "action": "accept", "src": ["*"], "dst": ["*:*"] }
+    ],
+    "nodeAttrs": [
+      { "target": ["*"], "attr": ["funnel"] }
+    ]
+  }
+  ```
+
+  若按具体 tag 授权，节点必须带该 tag，因此生成 auth key 时请加上对应标签（加入
+  的节点即自动带该 tag）。注意：只把 `"nodeAttrs": [...]` 片段单独粘贴会因顶层出现
+  裸键而解析失败（`invalid character ':' after top-level value`），必须放在外层
+  `{ }` 内。
+
+- **控制台 GUI：** **Machines →** 选中 `ariacompute-funnel` 节点 → **Funnel** →
+  为该节点开启。这样无需改 ACL 即可直接设置属性。
+
+授予后重启服务（`sudo systemctl restart aria-tailscale`）；属性同步可能需几秒。
+请确认是在**当前实际运行的节点**上开启 Funnel，而不是某个陈旧或 ephemeral 的条目。
+
+### 自定义域名（DNS）
+
+若要用自定义域名（如 `agent.ariacompute.com`）而非默认的 `*.ts.net` 名称，请在
+管理后台 **DNS → Custom domains** 添加该域名，然后在你的 DNS 服务商处创建以下
+记录（token / 目标名以控制台为准，下面为示例）：
+
+| 类型    | 主机名                          | 值                                          | 用途               |
+|---------|---------------------------------|---------------------------------------------|--------------------|
+| `TXT`   | `_tailscale.ariacompute.com`    | `tailscale-verify=<控制台提供的token>`      | 域名所有权校验     |
+| `CNAME` | `agent.ariacompute.com`         | `ariacompute-funnel.<tailnet>.ts.net`      | 将域名指向 Funnel 节点 |
+
+- 若注册的是根域 `ariacompute.com`（推荐，自动覆盖 `*.ariacompute.com`），TXT 主机名
+  仍为 `_tailscale.ariacompute.com`，CNAME 仍用 `agent.ariacompute.com`；若直接注册子域
+  `agent.ariacompute.com`，TXT 主机名会变成 `_tailscale.agent.ariacompute.com`，请以
+  控制台显示为准。
+- 验证通过后 Tailscale 会自动签发/续期证书（Let's Encrypt，DNS-01），之后
+  `https://agent.ariacompute.com` 即可经 Funnel 访问。
+- 优先用 CNAME 而非 `A` 记录（节点 tailnet IP 可能变化）。
 
 ## 构建
 
@@ -169,6 +238,11 @@ sudo journalctl -u aria-tailscale -f
   文件，推荐）；或
 - 直接填写 `/etc/aria-tailscale/ts_authkey`，由 systemd 的 `LoadCredential`
   注入（可进一步用 `SetCredentialEncrypted` 做静态加密）。
+
+生成 key 时请在 **Settings → Keys → Authentication keys** 勾选 **Reusable**、
+**不要勾选 Ephemeral**。Ephemeral key 会让每次重启都注册一台新的 tailnet machine
+（断开时还会被删除）；而 reusable + 非 ephemeral 的 key 能让节点复用持久化
+`StateDir` 中的身份，重启不再新增 machine，列表保持稳定。
 
 密钥仅在该节点首次加入 tailnet 时需要；加入后其 machine key 会持久化在
 `StateDir`，因此之后可删除该密钥。请勿通过命令行 `--auth-key` 传入，以免暴露在

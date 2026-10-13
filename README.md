@@ -32,7 +32,7 @@ External client ──HTTPS (Host: app.example.com)──▶ Tailscale Funnel :4
 
 Tailscale provisions TLS certificates for the Funnel node automatically. To use
 custom domains (`app.example.com`, `api.example.com`), add them as
-**Funnel custom domains** in your tailnet admin console and point their DNS at the
+**DNS → Custom domains** in your tailnet admin console and point their DNS at the
 Funnel node. The Go side only routes on the `Host` header; no certificate handling
 is needed in code.
 
@@ -48,7 +48,82 @@ tailscale listen: Funnel not available; HTTPS must be enabled. See https://tails
 ```
 
 After enabling, wait a few seconds for the node to fetch its cert, then restart
-the service. (Custom domains also need to be added as Funnel custom domains.)
+the service. (Custom domains also need to be added as DNS → Custom domains.)
+
+### Enable Funnel for the node
+
+In addition to enabling HTTPS, the node itself must be granted the `funnel` node
+attribute — otherwise `ListenFunnel` fails with:
+
+```
+tailscale listen: Funnel not available; "funnel" node attribute not set. See https://tailscale.com/s/no-funnel.
+```
+
+Grant it one of two ways:
+
+- **ACL policy (recommended for servers):** in **Access controls → Definitions → Node attributes**, add
+  `nodeAttrs` as a **top-level key** inside the existing policy object (next to
+  `acls`, not as a standalone file). It grants the `funnel` attribute to nodes —
+  to a specific tag (e.g. `tag:ariacompute`) or to all nodes with `["*"]`:
+
+  ```json
+  {
+    "acls": [
+      { "action": "accept", "src": ["*"], "dst": ["*:*"] }
+    ],
+    "nodeAttrs": [
+      { "target": ["tag:ariacompute"], "attr": ["funnel"] }
+    ]
+  }
+  ```
+
+  To grant `funnel` to **every** node instead, use `["*"]` as the target:
+
+  ```json
+  {
+    "acls": [
+      { "action": "accept", "src": ["*"], "dst": ["*:*"] }
+    ],
+    "nodeAttrs": [
+      { "target": ["*"], "attr": ["funnel"] }
+    ]
+  }
+  ```
+
+  If you target a specific tag, the node must carry that tag, so generate the
+  auth key with it (the joining node is then auto-tagged). Pasting only the
+  `"nodeAttrs": [...]` fragment on its own fails to parse
+  ("invalid character ':' after top-level value") — it must live inside the
+  surrounding `{ }`.
+
+- **Admin console GUI:** **Machines →** select the `ariacompute-funnel` node →
+  **Funnel** → enable it for the node. This sets the attribute directly without
+  editing the ACL.
+
+After granting, restart the service (`sudo systemctl restart aria-tailscale`); the
+attribute can take a few seconds to propagate. Make sure Funnel is enabled on the
+node that is actually running, not a stale or ephemeral entry.
+
+### Custom domains (DNS)
+
+To serve a custom domain (e.g. `agent.ariacompute.com`) instead of the default
+`*.ts.net` name, add it under **DNS → Custom domains** in the admin console, then
+create these records at your DNS provider. Copy the exact token/target from the
+console — the values below are illustrative:
+
+| Type    | Name                          | Value                                  | Purpose                 |
+|---------|-------------------------------|----------------------------------------|-------------------------|
+| `TXT`   | `_tailscale.ariacompute.com`  | `tailscale-verify=<token-from-console>`| Domain ownership check  |
+| `CNAME` | `agent.ariacompute.com`       | `ariacompute-funnel.<tailnet>.ts.net` | Point domain at Funnel  |
+
+- If you register the apex `ariacompute.com` (recommended; covers
+  `*.ariacompute.com`), the TXT name stays `_tailscale.ariacompute.com` and the
+  CNAME still uses `agent.ariacompute.com`. If you register the subdomain
+  `agent.ariacompute.com` directly, the TXT name becomes
+  `_tailscale.agent.ariacompute.com` — follow the console exactly.
+- After verification Tailscale issues/renews the certificate automatically
+  (Let's Encrypt, DNS-01). Then `https://agent.ariacompute.com` works via Funnel.
+- Prefer the CNAME over an `A` record (the node's tailnet IP can change).
 
 ## Build
 
@@ -175,6 +250,12 @@ The package never contains a Tailscale auth key. After install, choose one of:
 - `TS_AUTHKEY_FILE=/etc/aria-tailscale/ts_authkey` (a `0600` file; recommended), or
 - fill `/etc/aria-tailscale/ts_authkey` and let systemd's `LoadCredential` feed
   it (optionally `SetCredentialEncrypted` for at-rest encryption).
+
+Generate the key in **Settings → Keys → Authentication keys** with **Reusable**
+checked and **Ephemeral** *unchecked*. An ephemeral key makes each restart register
+a new tailnet machine (and drops it on disconnect); a reusable, non-ephemeral key
+lets the node reuse its persisted `StateDir` identity across restarts, so the
+machine list stays stable.
 
 The key is only needed the first time the node joins the tailnet; once joined,
 its machine key persists in `StateDir`, so the auth key can be removed. Avoid
