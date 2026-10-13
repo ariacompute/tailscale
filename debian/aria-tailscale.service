@@ -8,6 +8,10 @@ Wants=network-online.target
 Type=simple
 Environment=HOME=/var/lib/aria-tailscale
 EnvironmentFile=-/etc/default/aria-tailscale
+# Feed the Tailscale auth key from a 0600 file via a tmpfs credential (Tier 3).
+# The file is created empty by the postinst; the operator fills it. Optionally
+# replace with SetCredentialEncrypted=ts_authkey:... for at-rest encryption.
+LoadCredential=ts_authkey:/etc/aria-tailscale/ts_authkey
 WorkingDirectory=/var/lib/aria-tailscale
 StateDirectory=aria-tailscale
 ExecStart=/usr/lib/aria-tailscale/aria-tailscale-service

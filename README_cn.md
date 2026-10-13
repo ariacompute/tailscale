@@ -133,9 +133,9 @@ sudo dpkg -i ../aria-tailscale_<version>_amd64.deb
 ```
 
 安装后，软件包会在 `/etc/aria-tailscale/config.yaml` 放置一份可用配置并
-默认加载。编辑 `/etc/default/aria-tailscale` 设置 `TS_AUTHKEY`，再编辑
-`/etc/aria-tailscale/config.yaml` 添加你的路由（或用
-`ARIA_TAILSCALE_ROUTES` / `ARIA_TAILSCALE_CONFIG` 覆盖），然后：
+默认加载。编辑 `/etc/default/aria-tailscale` 设置 `TS_AUTHKEY`（或
+`TS_AUTHKEY_FILE`），再编辑 `/etc/aria-tailscale/config.yaml` 添加你的路由
+（或用 `ARIA_TAILSCALE_ROUTES` / `ARIA_TAILSCALE_CONFIG` 覆盖），然后：
 
 ```bash
 sudo systemctl status aria-tailscale
@@ -146,6 +146,20 @@ sudo journalctl -u aria-tailscale -f
 服务的 tsnet 状态保存在 `/var/lib/aria-tailscale`，由
 `/usr/lib/aria-tailscale/aria-tailscale-service` 启动脚本把
 `/etc/default/aria-tailscale` 翻译为命令行参数后运行二进制。
+
+### Tailscale 鉴权密钥
+
+软件包不含任何 Tailscale 鉴权密钥。安装后任选其一提供：
+
+- 在 `/etc/default/aria-tailscale` 中设置 `TS_AUTHKEY`（该文件权限为 `0600`）；
+- 设置 `TS_AUTHKEY_FILE=/etc/aria-tailscale/ts_authkey`（指向一个 `0600`
+  文件，推荐）；或
+- 直接填写 `/etc/aria-tailscale/ts_authkey`，由 systemd 的 `LoadCredential`
+  注入（可进一步用 `SetCredentialEncrypted` 做静态加密）。
+
+密钥仅在该节点首次加入 tailnet 时需要；加入后其 machine key 会持久化在
+`StateDir`，因此之后可删除该密钥。请勿通过命令行 `--auth-key` 传入，以免暴露在
+`ps` / `/proc` 中。
 
 ## 发布
 

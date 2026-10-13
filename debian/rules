@@ -15,3 +15,9 @@ override_dh_auto_test:
 
 override_dh_auto_clean:
 	rm -rf build
+
+# Keep the env defaults file root-only: if an operator writes TS_AUTHKEY there
+# it must not be world-readable (Tier 1 hardening).
+override_dh_fixperms:
+	dh_fixperms
+	chmod 600 debian/aria-tailscale/etc/default/aria-tailscale

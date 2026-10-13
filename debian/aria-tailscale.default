@@ -7,8 +7,15 @@ ARIA_TAILSCALE_TAILSCALE=funnel
 ARIA_TAILSCALE_HOSTNAME=ariacompute-funnel
 ARIA_TAILSCALE_STATE_DIR=/var/lib/aria-tailscale/tsnet
 
-# Optional Tailscale auth key (required for funnel/tailnet).
+# Tailscale auth key (required for funnel/tailnet). The secret is NEVER shipped
+# in the package — supply it after install, and it can be removed once the node
+# has joined the tailnet (its machine key persists in StateDir). Pick ONE of:
+#   1) TS_AUTHKEY below (this file is installed 0600; still readable by local root)
+#   2) TS_AUTHKEY_FILE below, pointing at /etc/aria-tailscale/ts_authkey (0600)
+#   3) fill /etc/aria-tailscale/ts_authkey and let systemd LoadCredential feed it
+#      (optionally SetCredentialEncrypted for at-rest encryption)
 # TS_AUTHKEY=
+# TS_AUTHKEY_FILE=/etc/aria-tailscale/ts_authkey
 
 # Explicit config file (routes + settings). The Debian package installs a
 # working template at /etc/aria-tailscale/config.yaml and loads it by default;

@@ -33,4 +33,17 @@ if [ -n "${ARIA_TAILSCALE_ROUTES:-}" ]; then
   done
 fi
 
+# Resolve the Tailscale auth key WITHOUT ever passing it on the command line
+# (avoids `ps` / /proc exposure). Precedence:
+#   TS_AUTHKEY (env, e.g. from /etc/default/aria-tailscale)
+#   > TS_AUTHKEY_FILE (0600 file)
+#   > systemd LoadCredential ($CREDENTIALS_DIRECTORY/ts_authkey)
+if [ -z "${TS_AUTHKEY:-}" ] && [ -n "${TS_AUTHKEY_FILE:-}" ] && [ -f "${TS_AUTHKEY_FILE}" ]; then
+  TS_AUTHKEY="$(cat "${TS_AUTHKEY_FILE}")"
+fi
+if [ -z "${TS_AUTHKEY:-}" ] && [ -n "${CREDENTIALS_DIRECTORY:-}" ] && [ -f "${CREDENTIALS_DIRECTORY}/ts_authkey" ]; then
+  TS_AUTHKEY="$(cat "${CREDENTIALS_DIRECTORY}/ts_authkey")"
+fi
+export TS_AUTHKEY
+
 exec /usr/bin/aria-tailscale run $ARGS

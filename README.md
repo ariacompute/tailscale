@@ -139,9 +139,9 @@ sudo dpkg -i ../aria-tailscale_<version>_amd64.deb
 
 After install, the package places a working config at
 `/etc/aria-tailscale/config.yaml` and loads it automatically. Review
-`/etc/default/aria-tailscale` and set `TS_AUTHKEY`, then edit
-`/etc/aria-tailscale/config.yaml` to add your routes (or override with
-`ARIA_TAILSCALE_ROUTES` / `ARIA_TAILSCALE_CONFIG`). Then:
+`/etc/default/aria-tailscale` and set `TS_AUTHKEY` (or `TS_AUTHKEY_FILE`),
+then edit `/etc/aria-tailscale/config.yaml` to add your routes (or override
+with `ARIA_TAILSCALE_ROUTES` / `ARIA_TAILSCALE_CONFIG`). Then:
 
 ```bash
 sudo systemctl status aria-tailscale
@@ -152,6 +152,19 @@ sudo journalctl -u aria-tailscale -f
 The service stores tsnet state under `/var/lib/aria-tailscale` and runs the
 binary via `/usr/lib/aria-tailscale/aria-tailscale-service`, which translates
 `/etc/default/aria-tailscale` into flags.
+
+### Tailscale auth key
+
+The package never contains a Tailscale auth key. After install, choose one of:
+
+- `TS_AUTHKEY` in `/etc/default/aria-tailscale` (that file is installed `0600`),
+- `TS_AUTHKEY_FILE=/etc/aria-tailscale/ts_authkey` (a `0600` file; recommended), or
+- fill `/etc/aria-tailscale/ts_authkey` and let systemd's `LoadCredential` feed
+  it (optionally `SetCredentialEncrypted` for at-rest encryption).
+
+The key is only needed the first time the node joins the tailnet; once joined,
+its machine key persists in `StateDir`, so the auth key can be removed. Avoid
+passing it on the command line (`--auth-key`) to keep it out of `ps`/`/proc`.
 
 ## Releases
 

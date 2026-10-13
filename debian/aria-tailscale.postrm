@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "purge" ]; then
+  KEYFILE=/etc/aria-tailscale/ts_authkey
+  if [ -e "$KEYFILE" ]; then
+    rm -f "$KEYFILE"
+  fi
+  # Remove the config dir only if it is empty (config.yaml may remain as a conffile).
+  if [ -d /etc/aria-tailscale ]; then
+    rmdir --ignore-fail-on-non-empty /etc/aria-tailscale 2>/dev/null || true
+  fi
+fi
+
+#DEBHELPER#

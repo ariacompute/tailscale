@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+# Create an empty, root-only Tailscale auth-key file if none exists.
+# The secret is never shipped in the package; the operator fills this file
+# (or sets TS_AUTHKEY / TS_AUTHKEY_FILE). It is created here rather than as a
+# conffile so upgrades never prompt and never clobber an existing key.
+KEYFILE=/etc/aria-tailscale/ts_authkey
+if [ ! -e "$KEYFILE" ]; then
+  mkdir -p /etc/aria-tailscale
+  install -m 0600 -o root -g root /dev/null "$KEYFILE"
+fi
+
+#DEBHELPER#

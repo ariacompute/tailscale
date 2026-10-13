@@ -32,14 +32,15 @@ func RegisterFlags(cmd *cobra.Command) {
 	cmd.Flags().String("tailscale", "funnel", `Tailscale integration: "funnel" (public HTTPS via Funnel), "tailnet" (private mesh HTTP only), or empty for local only`)
 	cmd.Flags().String("hostname", "", "Tailscale hostname for this node (tsnet) (default ariacompute-funnel)")
 	cmd.Flags().String("state-dir", "", "Tailscale state directory (tsnet) (default ./.aria-tailscale-state)")
-	cmd.Flags().String("auth-key", "", "Tailscale auth key (default TS_AUTHKEY env)")
+	cmd.Flags().String("auth-key", "", "Tailscale auth key (default TS_AUTHKEY env, then TS_AUTHKEY_FILE)")
 	cmd.Flags().StringArray("route", nil, "Route host=upstream (repeatable; overrides YAML routes with the same host)")
 }
 
 // FlagsFromCmd resolves Options from CLI flags, environment, and an optional
 // YAML config file. Precedence (lowest to highest):
 //
-//	built-in defaults -> YAML file -> CLI flags -> TS_AUTHKEY env -> --route
+//	built-in defaults -> YAML file -> CLI flags -> TS_AUTHKEY env ->
+//	TS_AUTHKEY_FILE (file) -> error
 func FlagsFromCmd(cmd *cobra.Command) (Options, error) {
 	var o Options
 
@@ -118,14 +119,26 @@ func FlagsFromCmd(cmd *cobra.Command) (Options, error) {
 		o.Hostname = "ariacompute-funnel"
 	}
 
-	// Auth key: required only when joining a tailnet (funnel/tailnet).
+	// Auth key: required only when joining a tailnet (funnel/tailnet). The
+	// secret is resolved from --auth-key / YAML auth_key, then the TS_AUTHKEY
+	// env, then a TS_AUTHKEY_FILE (a 0600 file) so it never sits on the
+	// command line. The package never ships a key.
 	if o.Tailscale != "" {
 		o.AuthKey = strings.TrimSpace(o.AuthKey)
 		if o.AuthKey == "" {
 			o.AuthKey = strings.TrimSpace(os.Getenv("TS_AUTHKEY"))
 		}
 		if o.AuthKey == "" {
-			return o, errors.New("tailscale auth key required: set --auth-key or TS_AUTHKEY (Funnel/tailnet need a reusable auth key)")
+			if p := strings.TrimSpace(os.Getenv("TS_AUTHKEY_FILE")); p != "" {
+				b, err := os.ReadFile(p)
+				if err != nil {
+					return o, fmt.Errorf("read TS_AUTHKEY_FILE %q: %w", p, err)
+				}
+				o.AuthKey = strings.TrimSpace(string(b))
+			}
+		}
+		if o.AuthKey == "" {
+			return o, errors.New("tailscale auth key required: set --auth-key, TS_AUTHKEY, or TS_AUTHKEY_FILE (Funnel/tailnet need a reusable auth key)")
 		}
 	}
 	return o, nil
