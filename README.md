@@ -8,7 +8,7 @@ routing by the incoming request `Host` header.
 
 It is built on [`tailscale.com/tsnet`](https://pkg.go.dev/tailscale.com/tsnet)
 and acts as a transparent, Host-based reverse proxy: external HTTPS requests for
-`app.example.com` or `api.example.com` are forwarded to the corresponding internal
+`test.ariacompute.com` are forwarded to the corresponding internal
 HTTP service.
 The Funnel node performs **no authentication** — it only forwards known hosts and
 returns `404` for anything else, so internal services remain responsible for their
@@ -17,21 +17,20 @@ own auth.
 ## How it works
 
 ```
-External client ──HTTPS (Host: app.example.com)──▶ Tailscale Funnel :443
-                                                      │
-                                                      ▼
-                                              tsnet node (Go binary)
-                                                      │  Host-based route table
-                                                      ▼
+External client ──HTTPS (Host: test.ariacompute.com)──▶ Tailscale Funnel :443
+                                                          │
+                                                          ▼
+                                                  tsnet node (Go binary)
+                                                          │  Host-based route table
+                                                          ▼
                        ┌──────────────────────────────────────────────┐
-                       │ app.example.com → http://127.0.0.1:8080      │
-                       │ api.example.com → http://127.0.0.1:9090      │
-                       │ unknown host    → 404                        │
+                       │ test.ariacompute.com → http://127.0.0.1:8080 │
+                       │ unknown host         → 404                   │
                        └──────────────────────────────────────────────┘
 ```
 
 Tailscale provisions TLS certificates for the Funnel node automatically. To use
-custom domains (`app.example.com`, `api.example.com`), add them as
+custom domains (`test.ariacompute.com`), add them as
 **DNS → Custom domains** in your tailnet admin console and point their DNS at the
 Funnel node. The Go side only routes on the `Host` header; no certificate handling
 is needed in code.
@@ -139,6 +138,31 @@ Run the test suite (no Tailscale required):
 ```bash
 go test ./...
 ./scripts/test-funnel.sh      # local-mode smoke test (needs curl + python3)
+./scripts/test-routes.sh      # route-table test against the config's routes
+```
+
+## Test
+
+`scripts/test-routes.sh` exercises the Host-based routing table without bringing
+up Tailscale. It:
+
+1. starts the Python upstream echo server `test/upstream.py` on `127.0.0.1:8080`
+   (and `:8081` for a second, distinct route);
+2. starts `aria-tailscale` in **local mode** with a config that mirrors the
+   routes in `config/config.yaml`;
+3. asserts, via `curl`, that:
+   - each Host routes to its own upstream (including distinct upstreams),
+   - unknown hosts (and a request with no matching Host) return `404`,
+   - `X-Forwarded-Host` equals the incoming Host and `X-Forwarded-For` is set,
+   - the request path and query string are forwarded unchanged.
+
+The upstream server (`test/upstream.py`) returns a JSON body describing what it
+received, which is what the assertions check. Run it directly to inspect a single
+upstream:
+
+```bash
+python3 test/upstream.py            # listens on 127.0.0.1:8080
+python3 test/upstream.py 8081       # listens on 127.0.0.1:8081
 ```
 
 ## Configuration
@@ -156,10 +180,8 @@ state_dir: /var/lib/aria-tailscale/tsnet
 # auth_key: tskey-auth-...   # prefer TS_AUTHKEY env or --auth-key
 
 routes:
-  - host: app.example.com
+  - host: test.ariacompute.com
     upstream: http://127.0.0.1:8080
-  - host: api.example.com
-    upstream: http://127.0.0.1:9090
 ```
 
 See `config/config.yaml`.

@@ -6,28 +6,27 @@
 把内网 Ubuntu 上部署的服务暴露到公网，并按入站请求的 `Host` 头进行路由。
 
 它基于 [`tailscale.com/tsnet`](https://pkg.go.dev/tailscale.com/tsnet)实现，
-是一个**透明**的、基于 Host 的反向代理：对`app.example.com`、`api.example.com` 等外部 HTTPS 请求，
+是一个**透明**的、基于 Host 的反向代理：对 `test.ariacompute.com` 等外部 HTTPS 请求，
 转发到对应的内网 HTTP 服务。Funnel 节点**不做任何鉴权**，仅按已知 Host 路由，未知 Host 返回 `404`，
 内网服务自行负责自身鉴权。
 
 ## 工作原理
 
 ```
-外部客户端 ──HTTPS（Host: app.example.com）──▶ Tailscale Funnel :443
-                                                    │
-                                                    ▼
-                                            tsnet 节点（Go 二进制）
-                                                    │  基于 Host 的路由表
-                                                    ▼
+外部客户端 ──HTTPS（Host: test.ariacompute.com）──▶ Tailscale Funnel :443
+                                                      │
+                                                      ▼
+                                              tsnet 节点（Go 二进制）
+                                                      │  基于 Host 的路由表
+                                                      ▼
                    ┌──────────────────────────────────────────────┐
-                   │ app.example.com → http://127.0.0.1:8080      │
-                   │ api.example.com → http://127.0.0.1:9090      │
-                   │ unknown host    → 404                        │
+                   │ test.ariacompute.com → http://127.0.0.1:8080 │
+                   │ unknown host         → 404                   │
                    └──────────────────────────────────────────────┘
 ```
 
 Tailscale 会自动为 Funnel 节点签发 TLS 证书。要使用自定义域名
-（`app.example.com`、`api.example.com`），需在 tailnet 管理后台把它们添加为
+（`test.ariacompute.com`），需在 tailnet 管理后台把它们添加为
 **DNS → Custom domains**，并将其 DNS 指向该 Funnel 节点。代码侧只需按 `Host` 头路由，
 无需处理证书。
 
@@ -127,6 +126,28 @@ go build -o aria-tailscale ./cmd/aria-tailscale
 ```bash
 go test ./...
 ./scripts/test-funnel.sh      # local 模式冒烟测试（需要 curl + python3）
+./scripts/test-routes.sh      # 对照 config 路由的路由表测试
+```
+
+## 测试
+
+`scripts/test-routes.sh` 无需启动 Tailscale 即可验证基于 Host 的路由表。它会：
+
+1. 启动 Python 上游 echo 服务 `test/upstream.py`，监听 `127.0.0.1:8080`
+   （并额外在 `:8081` 启动第二个、不同的路由）；
+2. 以 **local 模式** 启动 `aria-tailscale`，其配置镜像 `config/config.yaml` 中的路由；
+3. 通过 `curl` 断言：
+   - 每个 Host 都路由到各自的上游（包括不同的上游），
+   - 未知 Host（以及没有匹配 Host 的请求）返回 `404`，
+   - `X-Forwarded-Host` 等于入站 Host、`X-Forwarded-For` 已设置，
+   - 请求路径与查询串原样转发。
+
+上游服务（`test/upstream.py`）会返回一段描述所收到请求的 JSON，测试断言即基于此。
+也可单独运行它以查看单个上游：
+
+```bash
+python3 test/upstream.py            # 监听 127.0.0.1:8080
+python3 test/upstream.py 8081       # 监听 127.0.0.1:8081
 ```
 
 ## 配置
@@ -144,10 +165,8 @@ state_dir: /var/lib/aria-tailscale/tsnet
 # auth_key: tskey-auth-...   # 建议用 TS_AUTHKEY 环境变量或 --auth-key
 
 routes:
-  - host: app.example.com
+  - host: test.ariacompute.com
     upstream: http://127.0.0.1:8080
-  - host: api.example.com
-    upstream: http://127.0.0.1:9090
 ```
 
 参见 `config/config.yaml`。
