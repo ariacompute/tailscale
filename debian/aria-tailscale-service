@@ -17,6 +17,11 @@ ARGS="$ARGS --tailscale $ARIA_TAILSCALE_TAILSCALE"
 ARGS="$ARGS --hostname $ARIA_TAILSCALE_HOSTNAME"
 ARGS="$ARGS --state-dir $ARIA_TAILSCALE_STATE_DIR"
 
+# Default config location if ARIA_TAILSCALE_CONFIG is not set.
+if [ -z "${ARIA_TAILSCALE_CONFIG:-}" ] && [ -f /etc/aria-tailscale/config.yaml ]; then
+  ARIA_TAILSCALE_CONFIG=/etc/aria-tailscale/config.yaml
+fi
+
 if [ -n "${ARIA_TAILSCALE_CONFIG:-}" ]; then
   ARGS="$ARGS --config $ARIA_TAILSCALE_CONFIG"
 fi

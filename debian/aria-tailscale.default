@@ -10,9 +10,10 @@ ARIA_TAILSCALE_STATE_DIR=/var/lib/aria-tailscale/tsnet
 # Optional Tailscale auth key (required for funnel/tailnet).
 # TS_AUTHKEY=
 
-# Optional explicit config file (routes + settings). If unset, routes come
-# from ARIA_TAILSCALE_ROUTES below or built-in defaults.
-# ARIA_TAILSCALE_CONFIG=
+# Explicit config file (routes + settings). The Debian package installs a
+# working template at /etc/aria-tailscale/config.yaml and loads it by default;
+# edit that file to set your routes, or point this at another path.
+ARIA_TAILSCALE_CONFIG=/etc/aria-tailscale/config.yaml
 
 # Optional routes (host=upstream), space-separated. Override YAML routes.
 # ARIA_TAILSCALE_ROUTES="app.example.com=http://127.0.0.1:8080 api.example.com=http://127.0.0.1:9090"

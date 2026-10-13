@@ -3,13 +3,11 @@
 [English](README.md) | [中文](README_cn.md)
 
 一个用 Go 实现的常驻服务，通过 [Tailscale Funnel](https://tailscale.com/kb/1223/funnel)
-把内网 Ubuntu 上部署的 **ariacompute** 服务暴露到公网，并按入站请求的 `Host`
-头进行路由。
+把内网 Ubuntu 上部署的服务暴露到公网，并按入站请求的 `Host` 头进行路由。
 
-它基于 [`tailscale.com/tsnet`](https://pkg.go.dev/tailscale.com/tsnet)（与
-`gateway` 项目相同的机制）实现，是一个**透明**的、基于 Host 的反向代理：对
-`app.example.com`、`api.example.com` 等外部 HTTPS 请求，转发到对应的内网
-HTTP 服务。Funnel 节点**不做任何鉴权**，仅按已知 Host 路由，未知 Host 返回 `404`，
+它基于 [`tailscale.com/tsnet`](https://pkg.go.dev/tailscale.com/tsnet)实现，
+是一个**透明**的、基于 Host 的反向代理：对`app.example.com`、`api.example.com` 等外部 HTTPS 请求，
+转发到对应的内网 HTTP 服务。Funnel 节点**不做任何鉴权**，仅按已知 Host 路由，未知 Host 返回 `404`，
 内网服务自行负责自身鉴权。
 
 ## 工作原理
@@ -22,9 +20,9 @@ HTTP 服务。Funnel 节点**不做任何鉴权**，仅按已知 Host 路由，�
                                                     │  基于 Host 的路由表
                                                     ▼
                    ┌──────────────────────────────────────────────┐
-                   │ app.example.com    → http://127.0.0.1:8080 │
-                   │ api.example.com  → http://127.0.0.1:9090 │
-                   │ 未知 Host               → 404                   │
+                   │ app.example.com    → http://127.0.0.1:8080   │
+                   │ api.example.com  → http://127.0.0.1:9090     │
+                   │ 未知 Host               → 404                 │
                    └──────────────────────────────────────────────┘
 ```
 
@@ -70,7 +68,7 @@ routes:
     upstream: http://127.0.0.1:9090
 ```
 
-参见 `etc/aria-tailscale.yaml.example`。
+参见 `config/config.yaml`。
 
 ### CLI 参数
 
@@ -134,8 +132,10 @@ sudo apt install -y build-essential debhelper golang-1.24  # 或 golang-any
 sudo dpkg -i ../aria-tailscale_<version>_amd64.deb
 ```
 
-安装后，编辑 `/etc/default/aria-tailscale`，设置 `TS_AUTHKEY` 与
-`TAILSCALE_FUNNEL_ROUTES`（或 `TAILSCALE_FUNNEL_CONFIG`），然后：
+安装后，软件包会在 `/etc/aria-tailscale/config.yaml` 放置一份可用配置并
+默认加载。编辑 `/etc/default/aria-tailscale` 设置 `TS_AUTHKEY`，再编辑
+`/etc/aria-tailscale/config.yaml` 添加你的路由（或用
+`ARIA_TAILSCALE_ROUTES` / `ARIA_TAILSCALE_CONFIG` 覆盖），然后：
 
 ```bash
 sudo systemctl status aria-tailscale

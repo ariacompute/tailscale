@@ -20,7 +20,7 @@ Reference: `prombot-ai/gateway` (tsnet + `ListenFunnel`).
       `server_run_test.go` (Run local-mode integration). Coverage ~68%.
 - [x] Deployment: `debian/` (control, rules, install, changelog, service, default,
       source/format), `debian/aria-tailscale-service` launcher,
-      `etc/aria-tailscale.yaml.example`, `scripts/build-deb.sh`,
+      `config/config.yaml`, `scripts/build-deb.sh`,
       `scripts/test-funnel.sh`.
 - [x] `.github/workflows/release.yml`: linux amd64/arm64, windows x64, macOS
       universal, Debian package on `aria-tailscale/vX.Y.Z` tags.

@@ -1,5 +1,6 @@
-# Example Tailscale Funnel config for ariacompute services.
-# Copy to /etc/aria-tailscale/aria-tailscale.yaml and edit, then set
+# Tailscale Funnel config for ariacompute services.
+# The Debian package installs this to /etc/aria-tailscale/config.yaml and
+# loads it automatically. Edit it to set your routes, or override with
 # ARIA_TAILSCALE_CONFIG in /etc/default/aria-tailscale (or pass --config).
 
 tailscale: funnel          # funnel | tailnet | "" (local only)

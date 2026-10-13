@@ -16,7 +16,7 @@ internal/funnel/
   server_test.go               FlagsFromCmd edge cases, withRecovery, Run local integration
   config_test.go               LoadConfig / applyConfig / ParseRoute / defaultConfig
   proxy_test.go                NewProxy errors, routing, 502, X-Forwarded-Host
-etc/aria-tailscale.yaml.example   example YAML config
+config/config.yaml               example YAML config
 contrib/ (via debian/)         aria-tailscale-service launcher translating /etc/default into flags
 debian/                        debhelper packaging (control, rules, install, service, default)
 scripts/

@@ -2,14 +2,14 @@
 
 [English](README.md) | [中文](README_cn.md)
 
-A Go service that exposes internal Ubuntu-hosted **ariacompute** services to the
+A Go service that exposes internal Ubuntu-hosted services to the
 public internet through [Tailscale Funnel](https://tailscale.com/kb/1223/funnel),
 routing by the incoming request `Host` header.
 
 It is built on [`tailscale.com/tsnet`](https://pkg.go.dev/tailscale.com/tsnet)
-(the same mechanism used by the `gateway` project) and acts as a transparent,
-Host-based reverse proxy: external HTTPS requests for `app.example.com` or
-`api.example.com` are forwarded to the corresponding internal HTTP service.
+and acts as a transparent, Host-based reverse proxy: external HTTPS requests for
+`app.example.com` or `api.example.com` are forwarded to the corresponding internal
+HTTP service.
 The Funnel node performs **no authentication** — it only forwards known hosts and
 returns `404` for anything else, so internal services remain responsible for their
 own auth.
@@ -24,9 +24,9 @@ External client ──HTTPS (Host: app.example.com)──▶ Tailscale Funnel :4
                                                       │  Host-based route table
                                                       ▼
                        ┌──────────────────────────────────────────────┐
-                       │ app.example.com   → http://127.0.0.1:8080 │
-                       │ api.example.com → http://127.0.0.1:9090 │
-                       │ unknown host           → 404                   │
+                       │ app.example.com   → http://127.0.0.1:8080    │
+                       │ api.example.com → http://127.0.0.1:9090      │
+                       │ unknown host           → 404                 │
                        └──────────────────────────────────────────────┘
 ```
 
@@ -73,7 +73,7 @@ routes:
     upstream: http://127.0.0.1:9090
 ```
 
-See `etc/aria-tailscale.yaml.example`.
+See `config/config.yaml`.
 
 ### CLI flags
 
@@ -137,8 +137,11 @@ Build the package (produces `../aria-tailscale_<version>_amd64.deb`):
 sudo dpkg -i ../aria-tailscale_<version>_amd64.deb
 ```
 
-After install, review `/etc/default/aria-tailscale` and set `TS_AUTHKEY`
-and `TAILSCALE_FUNNEL_ROUTES` (or `TAILSCALE_FUNNEL_CONFIG`). Then:
+After install, the package places a working config at
+`/etc/aria-tailscale/config.yaml` and loads it automatically. Review
+`/etc/default/aria-tailscale` and set `TS_AUTHKEY`, then edit
+`/etc/aria-tailscale/config.yaml` to add your routes (or override with
+`ARIA_TAILSCALE_ROUTES` / `ARIA_TAILSCALE_CONFIG`). Then:
 
 ```bash
 sudo systemctl status aria-tailscale
