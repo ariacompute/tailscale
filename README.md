@@ -24,9 +24,9 @@ External client ──HTTPS (Host: app.example.com)──▶ Tailscale Funnel :4
                                                       │  Host-based route table
                                                       ▼
                        ┌──────────────────────────────────────────────┐
-                       │ app.example.com   → http://127.0.0.1:8080    │
+                       │ app.example.com → http://127.0.0.1:8080      │
                        │ api.example.com → http://127.0.0.1:9090      │
-                       │ unknown host           → 404                 │
+                       │ unknown host    → 404                        │
                        └──────────────────────────────────────────────┘
 ```
 
@@ -35,6 +35,20 @@ custom domains (`app.example.com`, `api.example.com`), add them as
 **Funnel custom domains** in your tailnet admin console and point their DNS at the
 Funnel node. The Go side only routes on the `Host` header; no certificate handling
 is needed in code.
+
+## Prerequisite
+
+Funnel needs the node to have a TLS certificate, which only happens after you turn
+on **Settings → HTTPS → Enable HTTPS** (issue certificates) in the Tailscale admin
+console. Until then the node has no certificate domain and `ListenFunnel` fails
+with:
+
+```
+tailscale listen: Funnel not available; HTTPS must be enabled. See https://tailscale.com/s/https.
+```
+
+After enabling, wait a few seconds for the node to fetch its cert, then restart
+the service. (Custom domains also need to be added as Funnel custom domains.)
 
 ## Build
 

@@ -20,9 +20,9 @@
                                                     │  基于 Host 的路由表
                                                     ▼
                    ┌──────────────────────────────────────────────┐
-                   │ app.example.com    → http://127.0.0.1:8080   │
-                   │ api.example.com  → http://127.0.0.1:9090     │
-                   │ 未知 Host               → 404                 │
+                   │ app.example.com → http://127.0.0.1:8080      │
+                   │ api.example.com → http://127.0.0.1:9090      │
+                   │ unknown host    → 404                        │
                    └──────────────────────────────────────────────┘
 ```
 
@@ -30,6 +30,19 @@ Tailscale 会自动为 Funnel 节点签发 TLS 证书。要使用自定义域名
 （`app.example.com`、`api.example.com`），需在 tailnet 管理后台把它们添加为
 **Funnel 自定义域名**，并将其 DNS 指向该 Funnel 节点。代码侧只需按 `Host` 头路由，
 无需处理证书。
+
+## 前置条件
+
+Funnel 需要节点拥有 TLS 证书，而证书只在你于 Tailscale 管理后台
+**Settings → HTTPS → Enable HTTPS**（签发证书）开启后才会签发。在此之前节点没有
+证书域名，`ListenFunnel` 会报错：
+
+```
+tailscale listen: Funnel not available; HTTPS must be enabled. See https://tailscale.com/s/https.
+```
+
+开启后稍等几秒让节点拉取证书，再重启服务即可。（自定义域名还需在后台添加为
+Funnel 自定义域名。）
 
 ## 构建
 
