@@ -9,7 +9,7 @@ Homepage: https://ariacompute.com
 
 Package: aria-tailscale
 Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}, ca-certificates
 Description: Tailscale Funnel reverse proxy for ariacompute services
  Routes external HTTPS traffic (by Host header) to internal ariacompute
  services through Tailscale Funnel. Transparent, Host-based reverse proxy

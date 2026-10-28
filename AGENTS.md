@@ -40,7 +40,7 @@ scripts/
 
 ## Conventions
 
-- Module path: `ariacompute/tailscale`. Go 1.24+. Key deps: `tailscale.com`
+- Module path: `ariacompute/tailscale`. Go 1.27.3+. Key deps: `tailscale.com`
   (latest stable), `github.com/spf13/cobra`, `gopkg.in/yaml.v3`.
 - Never modify the `prombot-ai/gateway` repo; this project only reuses its pattern.
 - Keep the Funnel node transparent: do not add auth or content rewriting in the
@@ -48,6 +48,17 @@ scripts/
 - Run `go test ./...` and `./scripts/test-funnel.sh` before publishing. Current
   `internal/funnel` unit-test coverage is ~68% (Tailscale-dependent `runTSNet`/
   `logURL` are excluded as they need a live tailnet).
+
+## Trust stores (eMudhra/emSign CA key compromise, 2026-10)
+
+- **Go 二进制**（静态，`CGO_ENABLED=0`，经 `tailscale.com` 客户端）：`go.mod` 升 `1.27.3`，由
+  `crypto/x509` 硬编码封禁 8 张 emSign 中间证书。Tailscale 控制面与 Funnel 证书配置等出向 TLS 受该
+  封禁保护——即便宿主系统 `ca-certificates` 较旧也会拒绝伪造链（决定性修复）。
+- **宿主部署信任库**：本仓为 Debian 打包（`.deb`，`debian/` 目录），二进制安装到 Debian/Ubuntu 宿主，
+  运行期信任库即宿主系统 `ca-certificates`。`debian/control` 的 `Depends` 已显式加入 `ca-certificates`
+  以保证信任库存在；宿主仍须通过 `apt-get install ca-certificates` 保持最新（事件后发布）。
+- `scripts/check-emudhra.sh`：离线按 emSign 根（信任锚）指纹扫描宿主 CA bundle（宿主通常含
+  openssl/curl，可直接运行）。
 
 ## Common commands
 
