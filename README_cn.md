@@ -286,6 +286,10 @@ Release 上构建以下产物：
 - Funnel 需要一个**可复用**的 Tailscale auth key，请在 tailnet 管理后台按所需标签/ACL
   生成。
 
+## 许可证
+
+MIT.
+
 ## 工程约定
 
 本仓库遵循 Harness Engineering：

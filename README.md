@@ -303,6 +303,10 @@ passing it on the command line (`--auth-key`) to keep it out of `ps`/`/proc`.
 - Funnel requires a **reusable** Tailscale auth key. Generate one in the tailnet
   admin console with appropriate tags/ACLs.
 
+## License
+
+MIT.
+
 ## Engineering Conventions
 
 This repository follows the Harness Engineering philosophy:
