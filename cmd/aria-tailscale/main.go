@@ -19,7 +19,7 @@ func main() {
 	root := &cobra.Command{
 		Use:           "aria-tailscale",
 		Short:         "Tailscale Funnel reverse proxy for ariacompute services",
-		Long:          "aria-tailscale joins a tailnet via tsnet and exposes internal ariacompute services (e.g. app.example.com, api.example.com) to the public internet through Tailscale Funnel, routing by the incoming Host header.",
+		Long:          "aria-tailscale joins a tailnet via tsnet and exposes internal ariacompute services to the public internet through Tailscale Funnel.",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
